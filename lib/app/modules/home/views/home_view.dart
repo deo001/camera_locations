@@ -1,481 +1,349 @@
+// import 'package:camera/camera.dart';
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
-// import '../controllers/home_controller.dart';
+// import 'package:profiling_tool/app/modules/register_farmer/controllers/camera_controller.dart';
 
-// class HomeView extends GetView<HomeController> {
-//   const HomeView({super.key});
+// class CameraWidgetView extends GetView<CameraWidgetController> {
+//   const CameraWidgetView({super.key});
 
 //   @override
 //   Widget build(BuildContext context) {
 //     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: Colors.blue.shade100,
-//         title: const Text('Camera Locations'),
-//         centerTitle: true,
-//         actions: [
-//           Obx(
-//             () => controller.capturedImage.value != null
-//                 ? IconButton(
-//                     icon: const Icon(Icons.refresh),
-//                     tooltip: 'Clear',
-//                     onPressed: controller.clearImage,
-//                   )
-//                 : const SizedBox.shrink(),
-//           ),
-//         ],
-//       ),
 //       body: Obx(() {
-//         if (controller.isLoading.value) {
-//           return const Center(
-//             child: Column(
-//               mainAxisAlignment: MainAxisAlignment.center,
-//               children: [
-//                 CircularProgressIndicator(),
-//                 SizedBox(height: 16),
-//                 Text('Taking photo & getting GPS...'),
-//               ],
-//             ),
-//           );
-//         }
-
-//         if (controller.capturedImage.value == null) {
+//         if (controller.isCameraError.value) {
 //           return Center(
 //             child: Column(
 //               mainAxisAlignment: MainAxisAlignment.center,
 //               children: [
-//                 Icon(Icons.camera_alt_outlined,
-//                     size: 80, color: Colors.blue.shade200),
-//                 const SizedBox(height: 20),
-//                 const Text(
-//                   'Take a photo to see its location',
-//                   style: TextStyle(fontSize: 16, color: Colors.grey),
-//                 ),
-//                 const SizedBox(height: 8),
-//                 const Padding(
-//                   padding: EdgeInsets.symmetric(horizontal: 40),
+//                 const Icon(Icons.error_outline, size: 60, color: Colors.red),
+//                 const SizedBox(height: 16),
+//                 Padding(
+//                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
 //                   child: Text(
-//                     'GPS coordinates will be captured in real-time at the moment you take the photo.',
+//                     "Camera Error:\n${controller.cameraErrorMessage.value}",
 //                     textAlign: TextAlign.center,
-//                     style: TextStyle(fontSize: 13, color: Colors.grey),
+//                     style: const TextStyle(fontSize: 16),
 //                   ),
+//                 ),
+//                 const SizedBox(height: 24),
+//                 ElevatedButton.icon(
+//                   onPressed: () => controller.initCamera(),
+//                   icon: const Icon(Icons.refresh),
+//                   label: const Text("Retry"),
+//                 ),
+//                 const SizedBox(height: 12),
+//                 TextButton(
+//                   onPressed: () => Get.back(),
+//                   child: const Text("Go Back"),
 //                 ),
 //               ],
 //             ),
 //           );
 //         }
 
-//         return SingleChildScrollView(
-//           padding: const EdgeInsets.all(16),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.stretch,
-//             children: [
-//               SizedBox(
-//                 height: context.width * 0.5,
-//                 width: context.width * 0.5,
-//                 child: ClipRRect(
-//                   borderRadius: BorderRadius.circular(12),
-//                   child: Image.file(
-//                     controller.capturedImage.value!,
-//                     fit: BoxFit.contain,
-//                   ),
-//                 ),
-//               ),
-//               const SizedBox(height: 16),
-//               Obx(() => _GpsCard(
-//                     hasGps: controller.hasGps.value,
-//                     gpsLoading: controller.gpsLoading.value,
-//                     latitude: controller.gpsLatitude.value,
-//                     longitude: controller.gpsLongitude.value,
-//                     altitude: controller.gpsAltitude.value,
-//                     accuracy: controller.gpsAccuracy.value,
-//                     error: controller.gpsError.value,
-//                   )),
-//               const SizedBox(height: 12),
-//               Obx(() => _ExifGpsCard(
-//                     hasExifGps: controller.hasExifGps.value,
-//                     latitude: controller.exifLatitude.value,
-//                     longitude: controller.exifLongitude.value,
-//                     altitude: controller.exifAltitude.value,
-//                   )),
-//               const SizedBox(height: 12),
-//               Obx(() => _ExifCard(
-//                     attributes: controller.allAttributes.value,
-//                   )),
-//             ],
-//           ),
-//         );
+//         if (!controller.isCameraReady.value) {
+//           return const Center(child: CircularProgressIndicator());
+//         }
+
+//         if (controller.showPreview.value &&
+//             controller.capturedImage.value != null) {
+//           return _buildPreview(context);
+//         }
+
+//         return _buildCamera(context);
 //       }),
-//       floatingActionButton: Obx(
-//         () => Column(
-//           mainAxisSize: MainAxisSize.min,
-//           children: [
-//             FloatingActionButton.small(
-//               heroTag: 'location',
-//               onPressed: () => Get.toNamed('/location'),
-//               backgroundColor: Colors.green.shade400,
-//               child: const Icon(Icons.gps_fixed),
-//             ),
-//             const SizedBox(height: 12),
-//             FloatingActionButton.extended(
-//               heroTag: 'camera',
-//               onPressed:
-//                   controller.isLoading.value ? null : controller.takePhoto,
-//               icon: const Icon(Icons.camera_alt),
-//               label: Text(
-//                 controller.capturedImage.value == null
-//                     ? 'Take Photo'
-//                     : 'Retake',
-//               ),
-//               backgroundColor: Colors.blue.shade400,
-//             ),
-//           ],
-//         ),
-//       ),
 //     );
 //   }
-// }
 
-// // ── GPS card (real-time, not from EXIF) ─────────────────────────────────────
-
-// class _GpsCard extends StatelessWidget {
-//   final bool hasGps;
-//   final bool gpsLoading;
-//   final double latitude;
-//   final double longitude;
-//   final double altitude;
-//   final double accuracy;
-//   final String error;
-
-//   const _GpsCard({
-//     required this.hasGps,
-//     required this.gpsLoading,
-//     required this.latitude,
-//     required this.longitude,
-//     required this.altitude,
-//     required this.accuracy,
-//     required this.error,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     if (gpsLoading && !hasGps) {
-//       return Card(
-//         elevation: 0,
-//         shape: RoundedRectangleBorder(
-//           borderRadius: BorderRadius.circular(12),
-//           side: BorderSide(color: Colors.amber.shade200),
+//   Widget _buildCamera(BuildContext context) {
+//     return Stack(
+//       children: [
+//         Positioned.fill(
+//           child: CameraPreview(controller.cameraController),
 //         ),
-//         color: Colors.amber.shade50,
-//         child: const Padding(
-//           padding: EdgeInsets.all(16),
-//           child: Row(
-//             children: [
-//               SizedBox(
-//                 width: 16,
-//                 height: 16,
-//                 child: CircularProgressIndicator(strokeWidth: 2),
-//               ),
-//               SizedBox(width: 12),
-//               Text('Getting GPS position...',
-//                   style: TextStyle(fontSize: 13)),
-//             ],
-//           ),
-//         ),
-//       );
-//     }
 
-//     if (!hasGps) {
-//       if (error.isNotEmpty) {
-//         return Card(
-//           elevation: 0,
-//           shape: RoundedRectangleBorder(
-//             borderRadius: BorderRadius.circular(12),
-//             side: BorderSide(color: Colors.red.shade200),
-//           ),
-//           color: Colors.red.shade50,
+//         /// DARK OVERLAY TOP
+//         SafeArea(
 //           child: Padding(
 //             padding: const EdgeInsets.all(16),
-//             child: Row(
-//               children: [
-//                 Icon(Icons.gps_off, color: Colors.red.shade700, size: 20),
-//                 const SizedBox(width: 12),
-//                 Expanded(
-//                   child: Text(error,
-//                       style: TextStyle(
-//                           color: Colors.red.shade800, fontSize: 13)),
+//             child: Align(
+//               alignment: Alignment.topCenter,
+//               child: Container(
+//                 width: double.infinity,
+//                 padding: const EdgeInsets.all(16),
+//                 decoration: BoxDecoration(
+//                   color: Colors.black.withValues(alpha: 0.55),
+//                   borderRadius: BorderRadius.circular(20),
 //                 ),
-//               ],
+//                 child: Obx(
+//                   () => Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     mainAxisSize: MainAxisSize.min,
+//                     children: [
+//                       Row(
+//                         children: const [
+//                           Icon(
+//                             Icons.location_on,
+//                             color: Colors.redAccent,
+//                             size: 20,
+//                           ),
+//                           SizedBox(width: 8),
+//                           Text(
+//                             "Current Location",
+//                             style: TextStyle(
+//                               color: Colors.white,
+//                               fontWeight: FontWeight.bold,
+//                               fontSize: 16,
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                       const SizedBox(height: 10),
+//                       Text(
+//                         controller.locationName.value.isEmpty
+//                             ? "Fetching location..."
+//                             : controller.locationName.value,
+//                         style: const TextStyle(
+//                           color: Colors.white,
+//                           fontSize: 15,
+//                         ),
+//                       ),
+//                       const SizedBox(height: 10),
+//                       Row(
+//                         children: [
+//                           Expanded(
+//                             child: Text(
+//                               "Lat: ${controller.latitude.value.toStringAsFixed(6)}",
+//                               style: const TextStyle(color: Colors.white70),
+//                             ),
+//                           ),
+//                           Expanded(
+//                             child: Text(
+//                               "Lng: ${controller.longitude.value.toStringAsFixed(6)}",
+//                               style: const TextStyle(color: Colors.white70),
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                       const SizedBox(height: 6),
+//                       Text(
+//                         "Accuracy: ±${controller.accuracy.value.toStringAsFixed(1)} m",
+//                         style: const TextStyle(color: Colors.white70),
+//                       ),
+//                       const SizedBox(height: 6),
+//                       Text(
+//                         "Capture Time: ${controller.captureTime.value}",
+//                         style: const TextStyle(color: Colors.white70),
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//               ),
 //             ),
 //           ),
-//         );
-//       }
-//       return const SizedBox.shrink();
-//     }
+//         ),
 
-//     final color = accuracy <= 5
-//         ? Colors.green
-//         : accuracy <= 10
-//             ? Colors.amber
-//             : Colors.orange;
-
-//     return Card(
-//       elevation: 0,
-//       shape: RoundedRectangleBorder(
-//         borderRadius: BorderRadius.circular(12),
-//         side: BorderSide(color: color.shade200),
-//       ),
-//       color: color.shade50,
-//       child: Padding(
-//         padding: const EdgeInsets.all(16),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Row(
-//               children: [
-//                 Icon(Icons.gps_fixed, color: color.shade700, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   'GPS Position',
-//                   style: TextStyle(
-//                     fontWeight: FontWeight.w600,
-//                     fontSize: 15,
-//                     color: color.shade800,
-//                   ),
-//                 ),
-//                 const Spacer(),
-//                 Container(
-//                   padding:
-//                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+//         /// BOTTOM CONTROLS
+//         Positioned(
+//           bottom: 0,
+//           left: 0,
+//           right: 0,
+//           child: Container(
+//             height: 170,
+//             decoration: BoxDecoration(
+//               gradient: LinearGradient(
+//                 begin: Alignment.topCenter,
+//                 end: Alignment.bottomCenter,
+//                 colors: [
+//                   Colors.transparent,
+//                   Colors.black.withValues(alpha: 0.9),
+//                 ],
+//               ),
+//             ),
+//             child: Center(
+//               child: GestureDetector(
+//                 onTap: controller.capturePhoto,
+//                 child: Container(
+//                   width: 85,
+//                   height: 85,
 //                   decoration: BoxDecoration(
-//                     color: color.shade100,
-//                     borderRadius: BorderRadius.circular(8),
+//                     shape: BoxShape.circle,
+//                     border: Border.all(
+//                       color: Colors.white,
+//                       width: 6,
+//                     ),
 //                   ),
-//                   child: Text(
-//                     '\u00b1${accuracy.toStringAsFixed(0)}m',
-//                     style: TextStyle(
-//                       fontWeight: FontWeight.w600,
-//                       fontSize: 13,
-//                       color: color.shade900,
-//                       fontFamily: 'monospace',
+//                   child: Center(
+//                     child: Container(
+//                       width: 65,
+//                       height: 65,
+//                       decoration: const BoxDecoration(
+//                         shape: BoxShape.circle,
+//                         color: Colors.white,
+//                       ),
 //                     ),
 //                   ),
 //                 ),
-//               ],
-//             ),
-//             const Divider(height: 20),
-//             _Row(label: 'Latitude', value: latitude.toStringAsFixed(7)),
-//             const SizedBox(height: 6),
-//             _Row(label: 'Longitude', value: longitude.toStringAsFixed(7)),
-//             const SizedBox(height: 6),
-//             _Row(
-//                 label: 'Altitude',
-//                 value: '${altitude.toStringAsFixed(1)} m'),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// // ── EXIF-embedded GPS card (extracted from the photo file itself) ──────────
-
-// class _ExifGpsCard extends StatelessWidget {
-//   final bool hasExifGps;
-//   final double latitude;
-//   final double longitude;
-//   final double altitude;
-
-//   const _ExifGpsCard({
-//     required this.hasExifGps,
-//     required this.latitude,
-//     required this.longitude,
-//     required this.altitude,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     if (!hasExifGps) {
-//       return Card(
-//         elevation: 0,
-//         shape: RoundedRectangleBorder(
-//           borderRadius: BorderRadius.circular(12),
-//           side: BorderSide(color: Colors.grey.shade300),
-//         ),
-//         color: Colors.grey.shade50,
-//         child: const Padding(
-//           padding: EdgeInsets.all(16),
-//           child: Row(
-//             children: [
-//               Icon(Icons.location_off, color: Colors.grey, size: 20),
-//               SizedBox(width: 12),
-//               Expanded(
-//                 child: Text(
-//                   "No GPS data embedded in this photo's EXIF.",
-//                   style: TextStyle(fontSize: 13, color: Colors.grey),
-//                 ),
 //               ),
-//             ],
-//           ),
-//         ),
-//       );
-//     }
-
-//     return Card(
-//       elevation: 0,
-//       shape: RoundedRectangleBorder(
-//         borderRadius: BorderRadius.circular(12),
-//         side: BorderSide(color: Colors.purple.shade200),
-//       ),
-//       color: Colors.purple.shade50,
-//       child: Padding(
-//         padding: const EdgeInsets.all(16),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Row(
-//               children: [
-//                 Icon(Icons.image_search,
-//                     color: Colors.purple.shade700, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   'Photo Location (from EXIF)',
-//                   style: TextStyle(
-//                     fontWeight: FontWeight.w600,
-//                     fontSize: 15,
-//                     color: Colors.purple.shade800,
-//                   ),
-//                 ),
-//               ],
 //             ),
-//             const Divider(height: 20),
-//             _Row(label: 'Latitude', value: latitude.toStringAsFixed(7)),
-//             const SizedBox(height: 6),
-//             _Row(label: 'Longitude', value: longitude.toStringAsFixed(7)),
-//             const SizedBox(height: 6),
-//             _Row(
-//                 label: 'Altitude',
-//                 value: '${altitude.toStringAsFixed(1)} m'),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// class _Row extends StatelessWidget {
-//   final String label;
-//   final String value;
-//   const _Row({required this.label, required this.value});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Row(
-//       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//       children: [
-//         Text(label,
-//             style: const TextStyle(color: Colors.grey, fontSize: 13)),
-//         Text(
-//           value,
-//           style: const TextStyle(
-//             fontWeight: FontWeight.w600,
-//             fontSize: 14,
-//             fontFamily: 'monospace',
 //           ),
 //         ),
 //       ],
 //     );
 //   }
-// }
 
-// // ── EXIF data card ───────────────────────────────────────────────────────────
+//   Widget _buildPreview(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.black,
+//       body: Stack(
+//         children: [
+//           Positioned.fill(
+//             child: Image.file(
+//               controller.capturedImage.value!,
+//               fit: BoxFit.contain,
+//             ),
+//           ),
 
-// class _ExifCard extends StatelessWidget {
-//   final Map<String, Object> attributes;
-//   const _ExifCard({required this.attributes});
+//           /// TOP INFO
+//           SafeArea(
+//             child: Padding(
+//               padding: const EdgeInsets.all(16),
+//               child: Container(
+//                 width: double.infinity,
+//                 padding: const EdgeInsets.all(16),
+//                 decoration: BoxDecoration(
+//                   color: Colors.black.withValues(alpha: 0.6),
+//                   borderRadius: BorderRadius.circular(20),
+//                 ),
+//                 child: Obx(
+//                   () => Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     mainAxisSize: MainAxisSize.min,
+//                     children: [
+//                       Text(
+//                         controller.captureTime.value,
+//                         style: const TextStyle(
+//                           color: Colors.white,
+//                           fontWeight: FontWeight.bold,
+//                           fontSize: 16,
+//                         ),
+//                       ),
+//                       const SizedBox(height: 8),
+//                       Text(
+//                         controller.locationName.value,
+//                         style: const TextStyle(
+//                           color: Colors.white,
+//                           fontSize: 14,
+//                         ),
+//                       ),
+//                       const SizedBox(height: 10),
+//                       Text(
+//                         "Latitude : ${controller.latitude.value.toStringAsFixed(6)}",
+//                         style: const TextStyle(color: Colors.white70),
+//                       ),
+//                       Text(
+//                         "Longitude : ${controller.longitude.value.toStringAsFixed(6)}",
+//                         style: const TextStyle(color: Colors.white70),
+//                       ),
+//                       Text(
+//                         "Accuracy : ±${controller.accuracy.value.toStringAsFixed(1)} m",
+//                         style: const TextStyle(color: Colors.white70),
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ),
 
-//   @override
-//   Widget build(BuildContext context) {
-//     if (attributes.isEmpty) return const SizedBox.shrink();
-
-//     return Card(
-//       elevation: 0,
-//       shape: RoundedRectangleBorder(
-//         borderRadius: BorderRadius.circular(12),
-//         side: BorderSide(color: Colors.blue.shade200),
-//       ),
-//       color: Colors.blue.shade50,
-//       child: Padding(
-//         padding: const EdgeInsets.all(16),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Row(
+//           /// BOTTOM BUTTONS
+//           Positioned(
+//             bottom: 40,
+//             left: 20,
+//             right: 20,
+//             child: Row(
 //               children: [
-//                 Icon(Icons.info, color: Colors.blue.shade700, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   'EXIF Metadata',
-//                   style: TextStyle(
-//                     fontWeight: FontWeight.w600,
-//                     fontSize: 15,
-//                     color: Colors.blue.shade800,
+//                 Expanded(
+//                   child: ElevatedButton.icon(
+//                     style: ElevatedButton.styleFrom(
+//                       backgroundColor: Colors.red.shade700,
+//                       padding: const EdgeInsets.symmetric(vertical: 18),
+//                       shape: RoundedRectangleBorder(
+//                         borderRadius: BorderRadius.circular(15),
+//                       ),
+//                     ),
+//                     onPressed: controller.discardPhoto,
+//                     icon: const Icon(Icons.close, color: Colors.white),
+//                     label: const Text(
+//                       "Retake",
+//                       style: TextStyle(color: Colors.white),
+//                     ),
+//                   ),
+//                 ),
+//                 const SizedBox(width: 16),
+//                 Expanded(
+//                   child: ElevatedButton.icon(
+//                     style: ElevatedButton.styleFrom(
+//                       backgroundColor: Colors.green.shade700,
+//                       padding: const EdgeInsets.symmetric(vertical: 18),
+//                       shape: RoundedRectangleBorder(
+//                         borderRadius: BorderRadius.circular(15),
+//                       ),
+//                     ),
+//                     onPressed: () async {
+//                       await controller.confirmSave();
+
+//                       Get.back(result: {
+//                         'imageBase64': controller.capturedImageBase64.value,
+//                         'latitude':
+//                             controller.latitude.value.toStringAsFixed(20),
+//                         'longitude':
+//                             controller.longitude.value.toStringAsFixed(20),
+//                       });
+//                     },
+//                     icon: const Icon(Icons.check, color: Colors.white),
+//                     label: const Text(
+//                       "Use Photo",
+//                       style: TextStyle(color: Colors.white),
+//                     ),
 //                   ),
 //                 ),
 //               ],
 //             ),
-//             const Divider(height: 20),
-//             ...attributes.entries.map(
-//               (e) => Padding(
-//                 padding: const EdgeInsets.only(bottom: 4),
-//                 child: Row(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     SizedBox(
-//                       width: 140,
-//                       child: Text(
-//                         '${e.key}:',
-//                         style: const TextStyle(
-//                             color: Colors.grey, fontSize: 12),
-//                       ),
-//                     ),
-//                     Expanded(
-//                       child: Text(
-//                         e.value.toString(),
-//                         style: const TextStyle(
-//                           fontWeight: FontWeight.w500,
-//                           fontSize: 12,
-//                           fontFamily: 'monospace',
-//                         ),
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-//           ],
-//         ),
+//           ),
+//         ],
 //       ),
 //     );
 //   }
 // }
+import 'dart:ui';
 
 import 'package:camera/camera.dart';
+import 'package:camera_locations/app/modules/home/controllers/home_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../controllers/home_controller.dart';
 
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
 
+  static const Color _accentGreen = Color(0xFF43A047);
+  static const Color _accentRed = Color(0xFFE53935);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Obx(() {
-        if (!controller.isCameraReady.value) {
-          return const Center(child: CircularProgressIndicator());
+        if (controller.isCameraError.value) {
+          return _buildError(context);
         }
 
-        if (controller.showPreview.value && controller.capturedImage.value != null) {
+        if (!controller.isCameraReady.value) {
+          return _buildLoading();
+        }
+
+        if (controller.showPreview.value &&
+            controller.capturedImage.value != null) {
           return _buildPreview(context);
         }
 
@@ -484,59 +352,225 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
+  // ---------------------------------------------------------------------
+  // Loading
+  // ---------------------------------------------------------------------
+  Widget _buildLoading() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(
+            color: _accentGreen,
+            strokeWidth: 3,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Starting camera...",
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // Error
+  // ---------------------------------------------------------------------
+  Widget _buildError(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28.0),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _accentRed.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.error_outline,
+                    size: 44, color: _accentRed),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                "Camera Error",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                controller.cameraErrorMessage.value,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accentGreen,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => controller.initCamera(),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text("Retry"),
+                ),
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: () => Get.back(),
+                child: Text(
+                  "Go Back",
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // Camera (live)
+  // ---------------------------------------------------------------------
   Widget _buildCamera(BuildContext context) {
     return Stack(
       children: [
-        CameraPreview(controller.cameraController),
-
+        Positioned.fill(child: CameraPreview(controller.cameraController)),
+        _topGradient(),
+        _bottomGradient(),
         Positioned(
-          top: 60,
+          top: 56,
           left: 16,
           right: 16,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Obx(
-              () => Column(
+          child: Obx(
+            () => _glassCard(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    "Location: ${controller.locationName.value}",
-                    style: const TextStyle(color: Colors.white),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on,
+                          color: _accentGreen, size: 18),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          controller.locationName.value.isEmpty
+                              ? "Detecting location..."
+                              : controller.locationName.value,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    "Lat: ${controller.latitude.value}",
-                    style: const TextStyle(color: Colors.white),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(
+                      height: 1,
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
                   ),
-                  Text(
-                    "Lng: ${controller.longitude.value}",
-                    style: const TextStyle(color: Colors.white),
+                  _infoRow(
+                    icon: Icons.my_location,
+                    text:
+                        "Lat: ${controller.latitude.value.toStringAsFixed(6)}",
                   ),
-                  Text(
-                    "Acc: ±${controller.accuracy.value} m",
-                    style: const TextStyle(color: Colors.white),
+                  const SizedBox(height: 4),
+                  _infoRow(
+                    icon: Icons.my_location,
+                    text:
+                        "Lng: ${controller.longitude.value.toStringAsFixed(6)}",
                   ),
-                  Text(
-                    "Time: ${controller.captureTime.value}",
-                    style: const TextStyle(color: Colors.white),
+                  const SizedBox(height: 4),
+                  _infoRow(
+                    icon: Icons.gps_fixed,
+                    text:
+                        "Accuracy: ±${controller.accuracy.value.toStringAsFixed(1)} m",
+                  ),
+                  const SizedBox(height: 4),
+                  _infoRow(
+                    icon: Icons.access_time,
+                    text: controller.captureTime.value.isEmpty
+                        ? "Not captured yet"
+                        : controller.captureTime.value,
                   ),
                 ],
               ),
             ),
           ),
         ),
-
         Positioned(
           bottom: 40,
           left: 0,
           right: 0,
           child: Center(
-            child: FloatingActionButton(
-              onPressed: () => controller.capturePhoto(),
-              child: const Icon(Icons.camera),
+            child: GestureDetector(
+              onTap: () => controller.capturePhoto(),
+              child: Container(
+                width: 76,
+                height: 76,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _accentGreen,
+                        _accentGreen.withValues(alpha: 0.75),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _accentGreen.withValues(alpha: 0.5),
+                        blurRadius: 14,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.camera_alt,
+                      color: Colors.white, size: 30),
+                ),
+              ),
             ),
           ),
         ),
@@ -544,6 +578,9 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
+  // ---------------------------------------------------------------------
+  // Preview (after capture)
+  // ---------------------------------------------------------------------
   Widget _buildPreview(BuildContext context) {
     return Stack(
       children: [
@@ -551,77 +588,230 @@ class HomeView extends GetView<HomeController> {
           child: Image.file(
             controller.capturedImage.value!,
             fit: BoxFit.contain,
-            color: Colors.black.withValues(alpha: 0.4),
-            colorBlendMode: BlendMode.darken,
           ),
         ),
-
         Positioned(
-          top: 60,
           left: 16,
           right: 16,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Obx(
-              () => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    controller.captureTime.value,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
+          bottom: 24,
+          child: Obx(
+            () => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _glassCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time,
+                              color: _accentGreen, size: 15),
+                          const SizedBox(width: 6),
+                          Text(
+                            controller.captureTime.value,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on,
+                              color: _accentGreen, size: 15),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              controller.locationName.value,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Lat ${controller.latitude.value.toStringAsFixed(5)}",
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 11),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              "Lng ${controller.longitude.value.toStringAsFixed(5)}",
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 11),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              "Accuracy ±${controller.accuracy.value.toStringAsFixed(1)}m",
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 11),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    controller.locationName.value,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _accentRed,
+                          foregroundColor: Colors.white,
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () {
+                          controller.discardPhoto();
+                        },
+                        icon: const Icon(Icons.refresh, size: 22),
+                        label: const Text(
+                          "Jaribu Tena",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _accentGreen,
+                          foregroundColor: Colors.white,
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () async {
+                          await controller.confirmSave();
+                          Get.back(result: {
+                            'imageBase64': controller.capturedImageBase64.value,
+                            'latitude':
+                                controller.latitude.value.toStringAsFixed(20),
+                            'longitude':
+                                controller.longitude.value.toStringAsFixed(20),
+                          });
+                        },
+                        icon: const Icon(Icons.check_circle, size: 22),
+                        label: const Text(
+                          "Tumia Picha Hii",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Lat: ${controller.latitude.value.toStringAsFixed(6)}",
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                  Text(
-                    "Lng: ${controller.longitude.value.toStringAsFixed(6)}",
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                  Text(
-                    "Acc: ±${controller.accuracy.value.toStringAsFixed(1)} m",
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
+      ],
+    );
+  }
 
-        Positioned(
-          bottom: 60,
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              FloatingActionButton(
-                heroTag: 'discard',
-                backgroundColor: Colors.red.shade700,
-                onPressed: () => controller.discardPhoto(),
-                child: const Icon(Icons.close),
-              ),
-              FloatingActionButton(
-                heroTag: 'save',
-                backgroundColor: Colors.green.shade700,
-                onPressed: () => controller.confirmSave(),
-                child: const Icon(Icons.check),
-              ),
-            ],
+  // ---------------------------------------------------------------------
+  // Shared bits
+  // ---------------------------------------------------------------------
+  Widget _topGradient() {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: Container(
+          height: 170,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.55),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _bottomGradient() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: Container(
+          height: 170,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.6),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _glassCard({required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow({
+    required IconData icon,
+    required String text,
+    Color color = Colors.white,
+    double fontSize = 13,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(icon, size: 15, color: _accentGreen),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: color, fontSize: fontSize),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
